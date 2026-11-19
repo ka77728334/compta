@@ -29,8 +29,8 @@ Dans l'application : **récap EÜR → Restaurer une sauvegarde** et choisir ce 
 ## Publier une nouvelle version (développement)
 
 1. Monter `version` dans `package.json` (ex. `0.1.1`).
-2. Commit, puis tag `v0.1.1` et push du tag.
-3. GitHub Actions fabrique l'installateur et le publie dans **Releases** ; les applications installées le proposent au démarrage.
+2. Commit et push sur `main`.
+3. GitHub Actions voit qu'il n'existe pas encore de Release `v0.1.1`, fabrique l'installateur et le publie dans **Releases** ; les applications installées le proposent au démarrage.
 
 Développement local : `npm install` puis `npm start`.
 

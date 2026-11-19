@@ -1,8 +1,10 @@
 name: Fabriquer l'installateur Windows
 
-# Une nouvelle version = un tag "v0.1.1", "v0.2.0"… poussé sur GitHub.
+# Nouvelle version = monter "version" dans package.json et pousser sur main.
+# Si cette version n'a pas encore de Release, GitHub fabrique l'installateur et la publie.
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -14,11 +16,28 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Version déjà publiée ?
+        id: ver
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VER" >/dev/null 2>&1; then
+            echo "Release v$VER existe déjà : rien à faire."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@v4
+        if: steps.ver.outputs.skip != 'true'
         with:
           node-version: 20
       - run: npm install
+        if: steps.ver.outputs.skip != 'true'
       - name: Fabriquer et publier sur la page Releases
+        if: steps.ver.outputs.skip != 'true'
         run: npx electron-builder --win --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
