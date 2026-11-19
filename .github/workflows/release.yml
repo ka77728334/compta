@@ -36,7 +36,9 @@ jobs:
       - name: Contenu de l'application
         if: steps.ver.outputs.skip != 'true'
         shell: bash
-        run: npx --yes @electron/asar list dist/win-unpacked/resources/app.asar | grep -v "/node_modules/.*/.*/" | head -60
+        run: |
+          npx --yes @electron/asar list dist/win-unpacked/resources/app.asar > asar.txt
+          grep -E '^.[^\\/]+$|app.index|node_modules.(jszip|jspdf|xlsx|electron-updater).dist.' asar.txt | head -40 || true
       - name: Test de lancement
         if: steps.ver.outputs.skip != 'true'
         shell: pwsh
