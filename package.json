@@ -1,7 +1,7 @@
 {
   "name": "compta",
   "productName": "compta",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "compta — EÜR, TVA et justificatifs pour indépendant (Karim Dabbèche)",
   "main": "main.js",
   "author": "Karim Dabbèche",
@@ -28,10 +28,26 @@
     "appId": "com.karimdabbeche.compta",
     "productName": "compta",
     "copyright": "© Karim Dabbèche",
-    "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["main.js", "preload.js", "app/**/*", "build/icon.png", "package.json"],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "app/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.png",
       "artifactName": "compta-setup-${version}.${ext}"
     },
@@ -44,6 +60,13 @@
       "shortcutName": "compta",
       "deleteAppDataOnUninstall": false
     },
-    "publish": [{ "provider": "github", "owner": "ka77728334", "repo": "compta", "releaseType": "release" }]
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ka77728334",
+        "repo": "compta",
+        "releaseType": "release"
+      }
+    ]
   }
 }

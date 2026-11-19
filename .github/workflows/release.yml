@@ -1,11 +1,10 @@
 name: Fabriquer l'installateur Windows
 
 # Nouvelle version = monter "version" dans package.json et pousser sur main.
-# Si cette version n'a pas encore de Release, GitHub fabrique l'installateur et la publie.
+# Si cette version n'a pas encore de Release : fabrication, test de lancement, publication.
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -24,20 +23,35 @@ jobs:
         run: |
           VER=$(node -p "require('./package.json').version")
           echo "version=$VER" >> "$GITHUB_OUTPUT"
-          if gh release view "v$VER" >/dev/null 2>&1; then
-            echo "Release v$VER existe déjà : rien à faire."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+          if gh release view "v$VER" >/dev/null 2>&1; then echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-node@v4
         if: steps.ver.outputs.skip != 'true'
         with:
           node-version: 20
       - run: npm install
         if: steps.ver.outputs.skip != 'true'
-      - name: Fabriquer et publier sur la page Releases
+      - name: Fabriquer
         if: steps.ver.outputs.skip != 'true'
-        run: npx electron-builder --win --publish always
+        run: npx electron-builder --win --publish never
+      - name: Contenu de l'application
+        if: steps.ver.outputs.skip != 'true'
+        shell: bash
+        run: npx --yes @electron/asar list dist/win-unpacked/resources/app.asar | grep -v "/node_modules/.*/.*/" | head -60
+      - name: Test de lancement
+        if: steps.ver.outputs.skip != 'true'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\win-unpacked\compta.exe" -ArgumentList "--smoke" -PassThru -RedirectStandardOutput out.txt -RedirectStandardError err.txt
+          if (-not $p.WaitForExit(60000)) { $p.Kill(); Get-Content out.txt, err.txt; Write-Error "L'application ne répond pas"; exit 1 }
+          Get-Content out.txt, err.txt
+          Get-Content "$env:APPDATA\compta\compta.log" -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { Write-Error "Test de lancement échoué (code $($p.ExitCode))"; exit 1 }
+      - name: Publier sur la page Releases
+        if: steps.ver.outputs.skip != 'true'
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER=${{ steps.ver.outputs.version }}
+          gh release create "v$VER" --title "compta $VER" --notes "Télécharger compta-setup-$VER.exe et l'exécuter. Les versions installées se mettent à jour toutes seules." \
+            "dist/compta-setup-$VER.exe" "dist/compta-setup-$VER.exe.blockmap" "dist/latest.yml"

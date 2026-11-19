@@ -7,6 +7,17 @@ const fsp = fs.promises;
 const crypto = require("crypto");
 const { pathToFileURL } = require("url");
 
+/* ---------- journal d'erreurs : %APPDATA%\compta\compta.log ---------- */
+const SMOKE = process.argv.includes("--smoke");
+function log(...a) { try { fs.mkdirSync(app.getPath("userData"), { recursive: true }); fs.appendFileSync(path.join(app.getPath("userData"), "compta.log"), new Date().toISOString() + " " + a.map(x => x && x.stack ? x.stack : String(x)).join(" ") + "\n"); } catch (e) {} }
+function fatal(where, err) {
+  log("ERREUR", where, err);
+  if (SMOKE) { console.error(where, err); app.exit(1); return; }
+  try { dialog.showErrorBox("compta : erreur", `${where}\n\n${err && err.stack || err}\n\nJournal : ${path.join(app.getPath("userData"), "compta.log")}`); } catch (e) {}
+}
+process.on("uncaughtException", e => fatal("Erreur inattendue", e));
+process.on("unhandledRejection", e => log("Promesse rejetée", e));
+
 let autoUpdater = null;
 try { autoUpdater = require("electron-updater").autoUpdater; } catch (e) { autoUpdater = null; }
 
@@ -91,12 +102,21 @@ let win = null, closing = false;
 function createWindow() {
   win = new BrowserWindow({
     width: 1440, height: 920, minWidth: 900, minHeight: 600,
-    title: "compta", backgroundColor: "#F3F4F2", show: false,
+    title: "compta", backgroundColor: "#F3F4F2", show: !SMOKE,
     icon: path.join(__dirname, "build", "icon.png"),
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false }
   });
-  win.once("ready-to-show", () => win.show());
-  win.loadFile(path.join(__dirname, "app", "index.html"));
+  win.webContents.on("did-fail-load", (_e, code, desc, url) => fatal("Chargement impossible", `${code} ${desc} ${url}`));
+  win.webContents.on("render-process-gone", (_e, d) => fatal("La fenêtre s'est arrêtée", d && d.reason));
+  win.webContents.on("console-message", (_e, level, msg, line, src) => { if (level >= 3) log("console", msg, src + ":" + line); });
+  if (SMOKE) win.webContents.once("did-finish-load", async () => {
+    try {
+      await new Promise(r => setTimeout(r, 1500));
+      const ok = await win.webContents.executeJavaScript(`!!(window.compta && window.compta.isDesktop) && !!document.querySelector("#tabs svg") && /dossier compta/.test(document.querySelector("#store").textContent)`);
+      console.log("SMOKE", ok ? "OK" : "ECHEC"); app.exit(ok ? 0 : 2);
+    } catch (e) { console.error(e); app.exit(3); }
+  });
+  win.loadFile(path.join(__dirname, "app", "index.html")).catch(e => fatal("Chargement de l'interface", e));
 
   // liens : justificatifs -> programme par défaut, web -> navigateur
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -175,7 +195,8 @@ function checkUpdates(manual) {
 /* ---------- démarrage ---------- */
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 else {
-  app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+  app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } else createWindow(); });
+  log("démarrage", app.getVersion(), process.platform, process.arch);
   app.whenReady().then(() => {
     app.setAppUserModelId("com.karimdabbeche.compta");
     protocol.handle("cfile", req => {
@@ -184,7 +205,7 @@ else {
       if (!p) return new Response("introuvable", { status: 404 });
       return net.fetch(pathToFileURL(p).toString());
     });
-    buildMenu(); createWindow(); setupUpdates();
-  });
+    buildMenu(); createWindow(); if (!SMOKE) setupUpdates();
+  }).catch(e => fatal("Démarrage", e));
   app.on("window-all-closed", () => app.quit());
 }
