@@ -1,0 +1,49 @@
+{
+  "name": "compta",
+  "productName": "compta",
+  "version": "0.1.0",
+  "description": "compta — EÜR, TVA et justificatifs pour indépendant (Karim Dabbèche)",
+  "main": "main.js",
+  "author": "Karim Dabbèche",
+  "license": "UNLICENSED",
+  "private": true,
+  "homepage": "https://github.com/ka77728334/compta",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never",
+    "release": "electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "3.8.2",
+    "jszip": "3.10.1",
+    "xlsx": "0.18.5"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.karimdabbeche.compta",
+    "productName": "compta",
+    "copyright": "© Karim Dabbèche",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["main.js", "preload.js", "app/**/*", "build/icon.png", "package.json"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.png",
+      "artifactName": "compta-setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "compta",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [{ "provider": "github", "owner": "ka77728334", "repo": "compta", "releaseType": "release" }]
+  }
+}
